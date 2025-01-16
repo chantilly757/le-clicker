@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clicker Game</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #6a11cb, #2575fc);
+            color: #fff;
+            overflow: hidden;
+        }
+        .container {
+            text-align: center;
+            width: 90%;
+            max-width: 600px;
+        }
+        .button {
+            background: #fff;
+            color: #2575fc;
+            padding: 20px 40px;
+            font-size: 1.5rem;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+        .score {
+            font-size: 2rem;
+            margin: 20px 0;
+        }
+        .progress {
+            width: 100%;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            margin: 20px auto;
+            overflow: hidden;
+            position: relative;
+        }
+        .progress-bar {
+            height: 100%;
+            background: #00ff00;
+            width: 0;
+            transition: width 0.5s;
+        }
+        .players {
+            margin-top: 30px;
+            text-align: left;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            border-radius: 10px;
+            width: 100%;
+        }
+        .player {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 5px 0;
+        }
+        .help-button {
+            background: #00ff00;
+            color: #fff;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Clicker Game</h1>
+        <div class="score" id="score">Score: 0</div>
+        <div class="progress">
+            <div class="progress-bar" id="progress-bar"></div>
+        </div>
+        <button class="button" id="click-button">Click Me!</button>
+        <div class="players" id="players"></div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.5.1/socket.io.min.js"></script>
+    <script>
+        const socket = io('http://localhost:3000'); // Remplacez localhost par l'IP du serveur si nécessaire
+        let score = 0;
+        const scoreElement = document.getElementById('score');
+        const progressBar = document.getElementById('progress-bar');
+        const clickButton = document.getElementById('click-button');
+        const playersContainer = document.getElementById('players');
+
+        // Mise à jour du score local
+        clickButton.addEventListener('click', () => {
+            score++;
+            updateLocalScore();
+            socket.emit('updateScore', score);
+        });
+
+        function updateLocalScore() {
+            scoreElement.textContent = `Score: ${score}`;
+            const progress = Math.min((score % 100) / 100 * 100, 100);
+            progressBar.style.width = `${progress}%`;
+
+            if (progress === 100) {
+                alert('Level Up!');
+                score = 0;
+                updateLocalScore();
+            }
+        }
+
+        // Mise à jour des scores des autres joueurs
+        socket.on('playersUpdate', (players) => {
+            playersContainer.innerHTML = '<h2>Players:</h2>';
+            players.forEach(player => {
+                const playerElement = document.createElement('div');
+                playerElement.classList.add('player');
+                playerElement.innerHTML = `
+                    <span>${player.id}: ${player.score}</span>
+                    <button class="help-button" onclick="helpPlayer('${player.id}')">Aider</button>
+                `;
+                playersContainer.appendChild(playerElement);
+            });
+        });
+
+        function helpPlayer(playerId) {
+            socket.emit('helpPlayer', playerId);
+        }
+
+        // Synchroniser le score initial
+        socket.emit('updateScore', score);
+    </script>
+</body>
+</html>
